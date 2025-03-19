@@ -574,7 +574,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d574766f2225984fa46c086b3dd41aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  objectPrefab: {fileID: 3788389863841699684, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
+  objectPrefab: {fileID: 3788389863841699684, guid: 46b849385b8e2af4594166b20a9f704c, type: 3}
 --- !u!114 &836579057
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -639,7 +639,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 58dc24677718c7040abf3790ee53962f, type: 3}
+  m_Sprite: {fileID: 112599442, guid: cc0925a68bc13f947b5bdd99e2d1ecea, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -863,63 +863,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1001 &955958662
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 3788389863841699684, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_Name
-      value: House
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.8967743
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -4.9751873
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8877621112576755515, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
 --- !u!1 &1160526148
 GameObject:
   m_ObjectHideFlags: 0
@@ -1092,7 +1035,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d574766f2225984fa46c086b3dd41aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  objectPrefab: {fileID: 3788389863841699684, guid: 96c01d8003abd5f4080cc12e0105f293, type: 3}
+  objectPrefab: {fileID: 3788389863841699684, guid: e9925d237af93aa4aad63ddc7f33e1dd, type: 3}
 --- !u!114 &1202290833
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1157,7 +1100,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 58dc24677718c7040abf3790ee53962f, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 865bfa7fa6c6d2d44945310e2364bb90, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1574,4 +1517,3 @@ SceneRoots:
   - {fileID: 1460134471}
   - {fileID: 1601056318}
   - {fileID: 1160526151}
-  - {fileID: 955958662}
