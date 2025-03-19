@@ -1,21 +1,29 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform cameraTransform;
+    public Transform cameraTransform; // Reference to the camera transform for zooming
+
+    // Camera movement attributes
     public float moveSpeed = 5f;
     public float rotateSpeed = 5f;
     public float zoomSpeed = 2f;
+
+    // Positions to use for the Camera Zoom
     public Vector3 originalPosition = new Vector3(0, 35, -44.5f);
     public Vector3 maxZoomIn = new Vector3(0, 20, -26.6f);
     public Vector3 maxZoomOut = new Vector3(0, 50, -62.4f);
+
+    // Camera movement boundaries
     public Vector3 movementBoundsMin = new Vector3(-7.5f, 0f, -7.5f);
     public Vector3 movementBoundsMax = new Vector3(7.5f, 0f, 7.5f);
 
-    private float zoomAmount = 0f;
-    private Vector3 lastMousePosition;
-    private Vector3 targetPosition;
-    private float leeway = 1f;
+    private float zoomAmount = 0f; // Stores current zoom level
+    private Vector3 lastMousePosition; // Stores last mouse position for movement calculations
+    private Vector3 targetPosition; // Target position for movement smoothing
+    private float leeway = 1f; // Extra movement leeway for boundaries
+    private bool canMove = false; // Determines if the camera can move
 
     void Start()
     {
@@ -29,23 +37,37 @@ public class CameraController : MonoBehaviour
         CameraZoom();
     }
 
+    // Handles camera movement by dragging the mouse with left-click
     void CameraMove()
     {
-        if (Input.GetMouseButton(0))
+        if (Input.GetMouseButtonDown(0))
+        {
+            // Prevent movement when clicking on UI elements
+            if (EventSystem.current.IsPointerOverGameObject())
+            {
+                canMove = false;
+                return;
+            }
+            canMove = true;
+        }
+
+        // Move camera while holding left-click
+        if (canMove && Input.GetMouseButton(0))
         {
             Vector3 mouseDelta = Input.mousePosition - lastMousePosition;
             float moveX = -mouseDelta.x * moveSpeed * Time.deltaTime * 0.1f;
             float moveZ = -mouseDelta.y * moveSpeed * Time.deltaTime * 0.1f;
             transform.Translate(moveX, 0f, moveZ);
 
+            // Clamp camera movement within set boundaries
             float clampedX = Mathf.Clamp(transform.position.x, movementBoundsMin.x - leeway, movementBoundsMax.x + leeway);
             float clampedZ = Mathf.Clamp(transform.position.z, movementBoundsMin.z - leeway, movementBoundsMax.z + leeway);
-
             transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
             targetPosition = transform.position;
         }
         else
         {
+            // Smoothly move camera to target position when out of boundaries
             targetPosition = new Vector3(
                 Mathf.Clamp(targetPosition.x, movementBoundsMin.x, movementBoundsMax.x),
                 targetPosition.y,
@@ -53,10 +75,10 @@ public class CameraController : MonoBehaviour
             );
             transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * 10f);
         }
-
         lastMousePosition = Input.mousePosition;
     }
 
+    // Rotates the camera when right-click is held
     void CameraRotate()
     {
         if (Input.GetMouseButton(1))
@@ -66,6 +88,7 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    // Adjusts the camera zoom based on mouse scroll
     void CameraZoom()
     {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
