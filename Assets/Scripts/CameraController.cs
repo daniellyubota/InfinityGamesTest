@@ -37,12 +37,17 @@ public class CameraController : MonoBehaviour
         CameraZoom();
     }
 
-    // Handles camera movement by dragging the mouse with left-click
     void CameraMove()
     {
+        // Prevent camera movement when an EditableObject is being dragged.
+        if (EditableObject.IsDraggingObject)
+        {
+            canMove = false;
+            return;
+        }
+
         if (Input.GetMouseButtonDown(0))
         {
-            // Prevent movement when clicking on UI elements
             if (EventSystem.current.IsPointerOverGameObject())
             {
                 canMove = false;
@@ -51,7 +56,6 @@ public class CameraController : MonoBehaviour
             canMove = true;
         }
 
-        // Move camera while holding left-click
         if (canMove && Input.GetMouseButton(0))
         {
             Vector3 mouseDelta = Input.mousePosition - lastMousePosition;
@@ -59,7 +63,6 @@ public class CameraController : MonoBehaviour
             float moveZ = -mouseDelta.y * moveSpeed * Time.deltaTime * 0.1f;
             transform.Translate(moveX, 0f, moveZ);
 
-            // Clamp camera movement within set boundaries
             float clampedX = Mathf.Clamp(transform.position.x, movementBoundsMin.x - leeway, movementBoundsMax.x + leeway);
             float clampedZ = Mathf.Clamp(transform.position.z, movementBoundsMin.z - leeway, movementBoundsMax.z + leeway);
             transform.position = new Vector3(clampedX, transform.position.y, clampedZ);
@@ -67,7 +70,6 @@ public class CameraController : MonoBehaviour
         }
         else
         {
-            // Smoothly move camera to target position when out of boundaries
             targetPosition = new Vector3(
                 Mathf.Clamp(targetPosition.x, movementBoundsMin.x, movementBoundsMax.x),
                 targetPosition.y,
@@ -77,6 +79,7 @@ public class CameraController : MonoBehaviour
         }
         lastMousePosition = Input.mousePosition;
     }
+
 
     // Rotates the camera when right-click is held
     void CameraRotate()

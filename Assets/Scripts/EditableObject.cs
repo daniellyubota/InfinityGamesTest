@@ -1,205 +1,253 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.Events;
 
 public class EditableObject : MonoBehaviour
 {
     public static EditableObject currentSelected;
+    public static bool IsPressingUI = false;
+    public static bool IsDraggingObject = false;
 
-    // Panel with Confirm/Cancel buttons and a rotation slider.
     public GameObject editUIPanel;
+    public Button editButton;
+    public Button deleteButton;
     public Button confirmButton;
     public Button cancelButton;
     public Slider rotationSlider;
 
-    // Materials for valid and invalid states.
     public Material validMaterial;
     public Material invalidMaterial;
     private Material originalMaterial;
 
-    // Variables for dragging the object.
     private bool isDragging = false;
     private Vector3 dragOffset;
     private Camera mainCamera;
 
-    // Store the position and rotation when the object is first selected.
-    private Vector3 initialPosition;
-    private Quaternion initialRotation;
+    private Vector3 initialPosition;    // Saved parent's position on selection
+    private Quaternion initialRotation; // Saved child's rotation on selection
 
-    // Boundaries for valid placement.
     public float minX = -13f;
     public float maxX = 13f;
     public float minZ = -13f;
     public float maxZ = 13f;
 
+    private bool isEditing = false;     // True when in active edit mode
+    private Transform rootTransform;    // Parent that moves during drag
+
     void Start()
     {
-        // Get the main camera and save the original material.
         mainCamera = Camera.main;
         if (GetComponent<Renderer>() != null)
             originalMaterial = GetComponent<Renderer>().material;
-
-        // Hide the edit UI panel at startup.
+        rootTransform = (transform.parent != null) ? transform.parent : transform;
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
+
+        // Add UI blocking events to each button to set the IsPressingUI flag.
+        AddUIBlocker(editButton);
+        AddUIBlocker(deleteButton);
+        AddUIBlocker(confirmButton);
+        AddUIBlocker(cancelButton);
     }
 
-    // When the object is clicked and released.
-    void OnMouseUpAsButton()
+    // Add an EventTrigger to a button to update the UI-press flag.
+    private void AddUIBlocker(Button btn)
     {
-        if (Input.GetMouseButtonUp(0))
-        {
-            Select();
-        }
+        if (btn == null)
+            return;
+        EventTrigger trigger = btn.gameObject.AddComponent<EventTrigger>();
+        EventTrigger.Entry pointerDown = new EventTrigger.Entry();
+        pointerDown.eventID = EventTriggerType.PointerDown;
+        pointerDown.callback.AddListener((BaseEventData data) => { IsPressingUI = true; });
+        trigger.triggers.Add(pointerDown);
+
+        EventTrigger.Entry pointerUp = new EventTrigger.Entry();
+        pointerUp.eventID = EventTriggerType.PointerUp;
+        pointerUp.callback.AddListener((BaseEventData data) => { IsPressingUI = false; });
+        trigger.triggers.Add(pointerUp);
     }
 
-    // When the mouse is pressed on the object.
-    void OnMouseDown()
+    void Update()
     {
-        // Start drag only if this object is already selected.
-        if (currentSelected == this && Input.GetMouseButtonDown(0))
+        // In selection mode (not editing), if a click occurs away from this object, deselect it.
+        if (currentSelected == this && !isEditing && Input.GetMouseButtonDown(0))
         {
-            // Do not start drag if clicking on a UI element.
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
                 return;
-
-            isDragging = true;
-            Vector3 screenPos = mainCamera.WorldToScreenPoint(transform.position);
-            Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPos.z);
-            dragOffset = transform.position - mainCamera.ScreenToWorldPoint(mousePos);
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                if (!hit.collider.transform.IsChildOf(transform))
+                    Deselect();
+            }
+            else
+            {
+                Deselect();
+            }
         }
     }
 
-    // Update the object's position while dragging.
+    void OnMouseUpAsButton()
+    {
+        if (IsPressingUI)
+            return;
+        if (Input.GetMouseButtonUp(0))
+            Select();
+    }
+
+    void OnMouseDown()
+    {
+        if (IsPressingUI)
+            return;
+        // Start dragging only if in edit mode.
+        if (currentSelected == this && isEditing && Input.GetMouseButtonDown(0))
+        {
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+                return;
+            isDragging = true;
+            IsDraggingObject = true;
+            Vector3 screenPos = mainCamera.WorldToScreenPoint(rootTransform.position);
+            Vector3 mousePos = new Vector3(Input.mousePosition.x, Input.mousePosition.y, screenPos.z);
+            dragOffset = rootTransform.position - mainCamera.ScreenToWorldPoint(mousePos);
+        }
+    }
+
     void OnMouseDrag()
     {
-        if (isDragging && currentSelected == this)
+        if (isDragging && currentSelected == this && isEditing)
         {
             Vector3 screenPos = new Vector3(Input.mousePosition.x, Input.mousePosition.y,
-                                            mainCamera.WorldToScreenPoint(transform.position).z);
+                mainCamera.WorldToScreenPoint(rootTransform.position).z);
             Vector3 newPos = mainCamera.ScreenToWorldPoint(screenPos) + dragOffset;
-            // Keep the Y position unchanged.
-            newPos.y = transform.position.y;
-            transform.position = newPos;
-
-            // Check if the new position is valid.
+            newPos.y = rootTransform.position.y;
+            rootTransform.position = newPos;
             CheckValidity();
         }
     }
 
-    // Stop dragging when the mouse is released.
     void OnMouseUp()
     {
         isDragging = false;
+        IsDraggingObject = false;
     }
 
-    // Select this object for editing.
     public void Select()
     {
-        // If already selected, do nothing.
+        // Prevent selecting a new object if another is already being edited.
+        if (currentSelected != null && currentSelected.isEditing && currentSelected != this)
+            return;
         if (currentSelected == this)
             return;
-
-        // Deselect any other object that is currently selected.
         if (currentSelected != null && currentSelected != this)
-        {
             currentSelected.Deselect();
-        }
+
         currentSelected = this;
-
-        // Save the object's current position and rotation.
-        initialPosition = transform.position;
+        initialPosition = rootTransform.position;
         initialRotation = transform.rotation;
-
-        // Check if the object is in a valid position and update the material.
         CheckValidity();
 
-        // Show the edit UI panel and reset the rotation slider to its neutral value (0.5).
         if (editUIPanel != null)
         {
             editUIPanel.SetActive(true);
+            if (editButton != null)
+                editButton.gameObject.SetActive(true);
+            if (deleteButton != null)
+                deleteButton.gameObject.SetActive(true);
+            if (confirmButton != null)
+                confirmButton.gameObject.SetActive(false);
+            if (cancelButton != null)
+                cancelButton.gameObject.SetActive(false);
             if (rotationSlider != null)
-                rotationSlider.value = 0.5f;
+                rotationSlider.gameObject.SetActive(false);
         }
+        isEditing = false;
     }
 
-    // Deselect the object and hide the edit UI panel.
     public void Deselect()
     {
         currentSelected = null;
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
-
-        // Restore the original material.
         if (GetComponent<Renderer>() != null && originalMaterial != null)
             GetComponent<Renderer>().material = originalMaterial;
     }
 
-    // Called when the Confirm button is pressed.
+    public void EnterEditMode()
+    {
+        isEditing = true;
+        if (rotationSlider != null)
+        {
+            rotationSlider.value = 12;
+            rotationSlider.gameObject.SetActive(true);
+        }
+        if (editButton != null)
+            editButton.gameObject.SetActive(false);
+        if (deleteButton != null)
+            deleteButton.gameObject.SetActive(false);
+        if (confirmButton != null)
+            confirmButton.gameObject.SetActive(true);
+        if (cancelButton != null)
+            cancelButton.gameObject.SetActive(true);
+    }
+
+    public void DeleteSelf()
+    {
+        if (rootTransform != null)
+            Destroy(rootTransform.gameObject);
+    }
+
     public void ConfirmEdit()
     {
-        // Accept the changes and exit edit mode.
         Deselect();
     }
 
-    // Called when the Cancel button is pressed.
     public void CancelEdit()
     {
-        // Revert the object to its original position and rotation.
-        transform.position = initialPosition;
+        rootTransform.position = initialPosition;
         transform.rotation = initialRotation;
         Deselect();
     }
 
-    // Called when clicking the UI background to cancel editing.
     public void DeselectViaUI()
     {
         CancelEdit();
     }
 
-    // Called when the rotation slider value changes.
-    // The slider should range from 0 to 1 with 0.5 as the neutral value.
+    // When the slider changes, rotate the child (this object) by fixed steps.
+    // Slider range: 0 to 24 with 12 as neutral; each unit equals 15°.
+    // Rotation direction is inverted.
     public void OnRotationSliderChanged(float value)
     {
         Debug.Log("Slider value: " + value);
-        float rotationRange = 180f; // Total rotation range is 180° (±90° from neutral).
-        float delta = value - 0.5f;
-        // Multiply delta by rotation range. A negative delta rotates in the opposite direction.
-        float rotationOffset = -delta * rotationRange;
-        // Set the rotation relative to the initial rotation.
+        float rotationOffset = -(value - 12) * 15f;
         transform.rotation = Quaternion.Euler(initialRotation.eulerAngles.x,
                                               initialRotation.eulerAngles.y + rotationOffset,
                                               initialRotation.eulerAngles.z);
-        // Update validity after rotation.
         CheckValidity();
     }
 
-    // Check if the object's position is valid (not colliding or out of bounds).
     public void CheckValidity()
     {
-        bool isOutOfBounds = transform.position.x < minX || transform.position.x > maxX ||
-                             transform.position.z < minZ || transform.position.z > maxZ;
+        bool isOutOfBounds = rootTransform.position.x < minX || rootTransform.position.x > maxX ||
+                             rootTransform.position.z < minZ || rootTransform.position.z > maxZ;
         bool isColliding = false;
-
         Collider col = GetComponent<Collider>();
         if (col != null)
         {
             Vector3 halfExtents = Vector3.zero;
-            Vector3 center = transform.position; // Default center
-
-            // If the collider is a BoxCollider, calculate proper half extents using its size and center.
+            Vector3 center = rootTransform.position;
             if (col is BoxCollider box)
             {
                 halfExtents = Vector3.Scale(box.size, transform.lossyScale) * 0.5f;
-                center = transform.position + box.center;
+                center = rootTransform.position + box.center;
             }
             else
             {
-                // Use the collider's bounds if it's not a BoxCollider.
                 halfExtents = col.bounds.extents;
             }
-
-            Collider[] colliders = Physics.OverlapBox(center, halfExtents, transform.rotation);
+            Collider[] colliders = Physics.OverlapBox(center, halfExtents, rootTransform.rotation);
             foreach (Collider other in colliders)
             {
                 if (other.gameObject != gameObject && other.CompareTag("PlacedObject"))
@@ -209,8 +257,6 @@ public class EditableObject : MonoBehaviour
                 }
             }
         }
-
-        // If out of bounds or colliding, set the invalid material and disable the confirm button.
         if (isOutOfBounds || isColliding)
         {
             if (invalidMaterial != null && GetComponent<Renderer>() != null)
@@ -220,7 +266,6 @@ public class EditableObject : MonoBehaviour
         }
         else
         {
-            // Otherwise, use the valid material and enable the confirm button.
             if (validMaterial != null && GetComponent<Renderer>() != null)
                 GetComponent<Renderer>().material = validMaterial;
             if (confirmButton != null)
@@ -228,14 +273,11 @@ public class EditableObject : MonoBehaviour
         }
     }
 
-    // Update the UI panel's screen position to follow the object.
     void LateUpdate()
     {
         if (currentSelected == this && editUIPanel != null)
         {
-            Vector3 screenPos = mainCamera.WorldToScreenPoint(transform.position);
-            // Adjust the panel position if needed.
-            screenPos.y += 0;
+            Vector3 screenPos = mainCamera.WorldToScreenPoint(rootTransform.position);
             editUIPanel.GetComponent<RectTransform>().position = screenPos;
         }
     }

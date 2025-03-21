@@ -19,19 +19,22 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         buttonImage = GetComponent<Image>();
     }
 
-    // Called when the user left-clicks the button and starts dragging the UI image
+    // Called when the user left-clicks the button and starts dragging the UI image.
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (EditableObject.currentSelected != null)
+            EditableObject.currentSelected.CancelEdit();
+
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
-        // Reduce button opacity while dragging
+        // Reduce button opacity during dragging.
         if (buttonImage != null)
         {
             buttonImage.color = new Color(buttonImage.color.r, buttonImage.color.g, buttonImage.color.b, 0.3f);
         }
 
-        // Create a draggable UI icon at the cursor position with 0.7 opacity
+        // Create a draggable icon that follows the cursor.
         dragIcon = new GameObject("DragIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
         dragIcon.transform.SetParent(canvasTransform, false);
         dragIcon.GetComponent<RectTransform>().sizeDelta = GetComponent<RectTransform>().sizeDelta;
@@ -40,12 +43,12 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         dragImage.color = new Color(dragImage.color.r, dragImage.color.g, dragImage.color.b, 0.7f);
         dragIcon.transform.position = Input.mousePosition;
 
-        // Create placement indicator (a Quad rotated flat)
+        // Create the placement indicator 
         placementIndicator = GameObject.CreatePrimitive(PrimitiveType.Quad);
         placementIndicator.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-        placementIndicator.transform.localScale = Vector3.one; // Temporary, will adjust below
+        placementIndicator.transform.localScale = Vector3.one; // Temporary scale
 
-        // Scale the indicator to match the prefab's footprint
+        // Scale the indicator to match the prefab's footprint.
         Renderer objRenderer = objectPrefab.GetComponentInChildren<Renderer>();
         if (objRenderer != null)
         {
@@ -56,7 +59,7 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
             );
         }
 
-        // Add a BoxCollider for collision detection
+        // Add a BoxCollider for collision detection.
         BoxCollider indicatorCollider = placementIndicator.AddComponent<BoxCollider>();
         indicatorCollider.size = placementIndicator.transform.localScale;
         indicatorCollider.isTrigger = true;
@@ -65,32 +68,28 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         placementIndicator.layer = LayerMask.NameToLayer("Ignore Raycast");
     }
 
-    // Updates the icon position while dragging, and moves the placement indicator
-    // so it always follows the mouse on y=0.1 (regardless of bounds).
+    // Called while dragging, updates the drag icon and placement indicator.
     public void OnDrag(PointerEventData eventData)
     {
-        // Move the drag icon in screen-space
+        // Update the drag icon's screen position.
         if (dragIcon != null)
         {
             dragIcon.transform.position = Input.mousePosition;
         }
 
-        // Project the mouse onto the plane y=0 to get a 3D position
+        // Project the mouse position onto a plane at y = 0.
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Plane groundPlane = new Plane(Vector3.up, 0f); // plane at y=0
+        Plane groundPlane = new Plane(Vector3.up, 0f);
         float distance;
 
         if (groundPlane.Raycast(ray, out distance))
         {
             Vector3 placementPosition = ray.GetPoint(distance);
-            placementPosition.y = 0.1f; // keep indicator slightly above the ground
+            placementPosition.y = 0.1f; // Keeps indicator slightly above the ground.
             placementIndicator.transform.position = placementPosition;
-
-            // Make sure the indicator is always visible
             placementIndicator.SetActive(true);
 
-            // --- Same collision logic as before ---
-            // Check for overlap with placed objects
+            // Check for overlap with placed objects.
             Collider[] colliders = Physics.OverlapBox(
                 placementIndicator.transform.position,
                 placementIndicator.transform.localScale / 2,
@@ -100,14 +99,14 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
             bool isColliding = false;
             foreach (Collider col in colliders)
             {
-                if (col.CompareTag("PlacedObject")) // must have a collider + 'PlacedObject' tag
+                if (col.CompareTag("PlacedObject"))
                 {
                     isColliding = true;
                     break;
                 }
             }
 
-            // Check if out of bounds 
+            // Check for out of bounds.
             bool isOutOfBounds =
                 (placementPosition.x <= -13f || placementPosition.x >= 13f ||
                  placementPosition.z <= -13f || placementPosition.z >= 13f);
@@ -125,14 +124,13 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         }
         else
         {
-            // If we somehow can't hit the plane, show indicator in red at its last position
             placementIndicator.SetActive(true);
             placementIndicator.GetComponent<Renderer>().material.color = Color.red;
             canPlace = false;
         }
     }
 
-    // Called when the user releases the icon while dragging and instantiates the prefab object
+    // Called when the user releases the button and places the object if the indicator is valid.
     public void OnPointerUp(PointerEventData eventData)
     {
         if (eventData.button != PointerEventData.InputButton.Left)
@@ -140,29 +138,24 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
 
         if (dragIcon != null)
         {
-            // Perform a raycast to see if we can place the object on the "Ground"
-            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            if (canPlace && Physics.Raycast(ray, out hit) && hit.collider.CompareTag("Ground"))
+            if (canPlace)
             {
-                // Clamp final spawn position within the allowed range
+                // Use the placement indicator's position 
+                Vector3 pos = placementIndicator.transform.position;
                 Vector3 clampedPosition = new Vector3(
-                    Mathf.Clamp(hit.point.x, -13f, 13f),
+                    Mathf.Clamp(pos.x, -13f, 13f),
                     0f,
-                    Mathf.Clamp(hit.point.z, -13f, 13f)
+                    Mathf.Clamp(pos.z, -13f, 13f)
                 );
 
-                // Instantiate the 3D object
                 GameObject placedObject = Instantiate(objectPrefab, clampedPosition, Quaternion.identity);
                 placedObject.tag = "PlacedObject";
             }
 
-            // Clean up
             Destroy(dragIcon);
             Destroy(placementIndicator);
         }
 
-        // Restore button opacity after drag ends
         if (buttonImage != null)
         {
             buttonImage.color = new Color(buttonImage.color.r, buttonImage.color.g, buttonImage.color.b, 1f);
