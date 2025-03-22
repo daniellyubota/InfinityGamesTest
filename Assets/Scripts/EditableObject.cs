@@ -15,6 +15,7 @@ public class EditableObject : MonoBehaviour
     public Button confirmButton;
     public Button cancelButton;
     public Slider rotationSlider;
+    public float spawnAnimDuration;
 
     public Material validMaterial;
     public Material invalidMaterial;
@@ -49,6 +50,7 @@ public class EditableObject : MonoBehaviour
         AddUIBlocker(deleteButton);
         AddUIBlocker(confirmButton);
         AddUIBlocker(cancelButton);
+        PlayPlacementAnimation(spawnAnimDuration);
     }
 
     // Add an EventTrigger to a button to update the UI-press flag.
@@ -179,7 +181,7 @@ public class EditableObject : MonoBehaviour
         isEditing = true;
         if (rotationSlider != null)
         {
-            rotationSlider.value = 12;
+            rotationSlider.value = 6;
             rotationSlider.gameObject.SetActive(true);
         }
         if (editButton != null)
@@ -216,12 +218,11 @@ public class EditableObject : MonoBehaviour
     }
 
     // When the slider changes, rotate the child (this object) by fixed steps.
-    // Slider range: 0 to 24 with 12 as neutral; each unit equals 15°.
-    // Rotation direction is inverted.
+    // Slider range: 0 to 12 with 6 as neutral; each unit equals 30°.
     public void OnRotationSliderChanged(float value)
     {
         Debug.Log("Slider value: " + value);
-        float rotationOffset = -(value - 12) * 15f;
+        float rotationOffset = -(value - 6) * 30f;
         transform.rotation = Quaternion.Euler(initialRotation.eulerAngles.x,
                                               initialRotation.eulerAngles.y + rotationOffset,
                                               initialRotation.eulerAngles.z);
@@ -273,6 +274,42 @@ public class EditableObject : MonoBehaviour
         }
     }
 
+    public void PlayPlacementAnimation(float duration)
+    {
+        StartCoroutine(AnimatePlacement(duration));
+    }
+
+    private System.Collections.IEnumerator AnimatePlacement(float duration)
+    {
+        // Store the current Y position and local scale as the target values.
+        float targetY = transform.position.y;
+        Vector3 targetScale = transform.localScale;
+
+        // Set starting values: Y = 0 and scale = 0.
+        Vector3 startPos = new Vector3(transform.position.x, 0f, transform.position.z);
+        transform.position = startPos;
+        transform.localScale = Vector3.zero;
+
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            // t goes from 0 to 1 over the duration (using SmoothStep for a smooth curve).
+            float t = Mathf.SmoothStep(0.5f, 1f, elapsed / duration);
+
+
+            // Interpolate Y position and scale.
+            float newY = Mathf.Lerp(0f, targetY, t);
+            transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+            transform.localScale = Vector3.Lerp(Vector3.zero, targetScale, t);
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Ensure final values are set.
+        transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
+        transform.localScale = targetScale;
+    }
     void LateUpdate()
     {
         if (currentSelected == this && editUIPanel != null)
