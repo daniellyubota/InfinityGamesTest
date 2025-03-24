@@ -43,32 +43,38 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         dragImage.color = new Color(dragImage.color.r, dragImage.color.g, dragImage.color.b, 0.7f);
         dragIcon.transform.position = Input.mousePosition;
 
-        // Create the placement indicator 
+        // Create the placement indicator.
         placementIndicator = GameObject.CreatePrimitive(PrimitiveType.Quad);
         placementIndicator.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         placementIndicator.transform.localScale = Vector3.one; // Temporary scale
 
-        // Scale the indicator to match the prefab's footprint.
-        Renderer objRenderer = objectPrefab.GetComponentInChildren<Renderer>();
-        if (objRenderer != null)
+
+        BoxCollider prefabCollider = objectPrefab.GetComponentInChildren<BoxCollider>();
+        if (prefabCollider != null)
         {
-            placementIndicator.transform.localScale = new Vector3(
-                objRenderer.bounds.size.x,
-                objRenderer.bounds.size.z,
-                1f
-            );
+            // Get the collider's local size.
+            Vector3 localSize = prefabCollider.size;
+            float scaleMultiplier = 0.4f; 
+            Vector3 footprint = new Vector3(localSize.x * scaleMultiplier, localSize.y * scaleMultiplier, 1f);
+            placementIndicator.transform.localScale = footprint;
         }
+        else
+        {
+            placementIndicator.transform.localScale = Vector3.one;
+        }
+
 
         // Add a BoxCollider for collision detection.
         BoxCollider indicatorCollider = placementIndicator.AddComponent<BoxCollider>();
         indicatorCollider.size = placementIndicator.transform.localScale;
         indicatorCollider.isTrigger = true;
 
-        placementIndicator.GetComponent<Renderer>().material.color = Color.blue;
+        // Set initial color to valid (using hex #00C8FF) when spawned.
+        placementIndicator.GetComponent<Renderer>().material.color = new Color(0f, 200f / 255f, 1f);
         placementIndicator.layer = LayerMask.NameToLayer("Ignore Raycast");
     }
 
-    // Called while dragging, updates the drag icon and placement indicator.
+    // Called while dragging; updates the drag icon and placement indicator.
     public void OnDrag(PointerEventData eventData)
     {
         // Update the drag icon's screen position.
@@ -79,13 +85,13 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
 
         // Project the mouse position onto a plane at y = 0.
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Plane groundPlane = new Plane(Vector3.up, 0f);
+        Plane groundPlane = new Plane(Vector3.up, 0f); // plane at y=0
         float distance;
 
         if (groundPlane.Raycast(ray, out distance))
         {
             Vector3 placementPosition = ray.GetPoint(distance);
-            placementPosition.y = 0.1f; // Keeps indicator slightly above the ground.
+            placementPosition.y = 0.1f; // keep indicator slightly above the ground
             placementIndicator.transform.position = placementPosition;
             placementIndicator.SetActive(true);
 
@@ -118,7 +124,7 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
             }
             else
             {
-                placementIndicator.GetComponent<Renderer>().material.color = Color.blue;
+                placementIndicator.GetComponent<Renderer>().material.color = new Color(0f, 200f / 255f, 1f);
                 canPlace = true;
             }
         }
@@ -140,15 +146,9 @@ public class UI_Button : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoin
         {
             if (canPlace)
             {
-                // Use the placement indicator's position 
+                // Use the placement indicator's position.
                 Vector3 pos = placementIndicator.transform.position;
-                Vector3 clampedPosition = new Vector3(
-                    Mathf.Clamp(pos.x, -13f, 13f),
-                    0f,
-                    Mathf.Clamp(pos.z, -13f, 13f)
-                );
-
-                GameObject placedObject = Instantiate(objectPrefab, clampedPosition, Quaternion.identity);
+                GameObject placedObject = Instantiate(objectPrefab, pos, Quaternion.identity);
                 placedObject.tag = "PlacedObject";
             }
 

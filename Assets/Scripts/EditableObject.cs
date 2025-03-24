@@ -19,46 +19,68 @@ public class EditableObject : MonoBehaviour
 
     public Material validMaterial;
     public Material invalidMaterial;
-    private Material originalMaterial;
+    // Array to pick the random material from.
+    public Material[] randomMaterials;
+    // Store the original materials (first will be random, second remains white)
+    private Material[] originalMaterials;
 
     private bool isDragging = false;
     private Vector3 dragOffset;
     private Camera mainCamera;
 
-    private Vector3 initialPosition;    // Saved parent's position on selection
-    private Quaternion initialRotation; // Saved child's rotation on selection
+    // Saved parent's position on selection
+    private Vector3 initialPosition;
+    // Saved child's rotation on selection
+    private Quaternion initialRotation;
 
     public float minX = -13f;
     public float maxX = 13f;
     public float minZ = -13f;
     public float maxZ = 13f;
 
-    private bool isEditing = false;     // True when in active edit mode
-    private Transform rootTransform;    // Parent that moves during drag
+    private bool isEditing = false; // True when in active edit mode
+    private Transform rootTransform; // Parent that moves during drag
 
     void Start()
     {
         mainCamera = Camera.main;
-        if (GetComponent<Renderer>() != null)
-            originalMaterial = GetComponent<Renderer>().material;
         rootTransform = (transform.parent != null) ? transform.parent : transform;
+
+        // Get the current materials from the renderer.
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null)
+        {
+            originalMaterials = rend.materials; // assumes two materials already assigned
+            // Pick a random material for the first slot if available.
+            if (randomMaterials != null && randomMaterials.Length > 0)
+            {
+                int randIndex = Random.Range(0, randomMaterials.Length);
+                Material[] newMats = rend.materials;
+                newMats[0] = randomMaterials[randIndex];
+                rend.materials = newMats;
+                originalMaterials = (Material[])newMats.Clone();
+            }
+        }
+
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
 
-        // Add UI blocking events to each button to set the IsPressingUI flag.
+        // Hook pointer events on each button to set the IsPressingUI flag.
         AddUIBlocker(editButton);
         AddUIBlocker(deleteButton);
         AddUIBlocker(confirmButton);
         AddUIBlocker(cancelButton);
+
         PlayPlacementAnimation(spawnAnimDuration);
     }
 
-    // Add an EventTrigger to a button to update the UI-press flag.
+    // Adds EventTrigger entries to a button to update the UI press flag.
     private void AddUIBlocker(Button btn)
     {
         if (btn == null)
             return;
         EventTrigger trigger = btn.gameObject.AddComponent<EventTrigger>();
+
         EventTrigger.Entry pointerDown = new EventTrigger.Entry();
         pointerDown.eventID = EventTriggerType.PointerDown;
         pointerDown.callback.AddListener((BaseEventData data) => { IsPressingUI = true; });
@@ -103,7 +125,7 @@ public class EditableObject : MonoBehaviour
     {
         if (IsPressingUI)
             return;
-        // Start dragging only if in edit mode.
+        // Only drag if in edit mode.
         if (currentSelected == this && isEditing && Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
@@ -137,7 +159,7 @@ public class EditableObject : MonoBehaviour
 
     public void Select()
     {
-        // Prevent selecting a new object if another is already being edited.
+        // Prevent selecting a new object if another is in active edit mode.
         if (currentSelected != null && currentSelected.isEditing && currentSelected != this)
             return;
         if (currentSelected == this)
@@ -172,8 +194,8 @@ public class EditableObject : MonoBehaviour
         currentSelected = null;
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
-        if (GetComponent<Renderer>() != null && originalMaterial != null)
-            GetComponent<Renderer>().material = originalMaterial;
+        if (GetComponent<Renderer>() != null && originalMaterials != null)
+            GetComponent<Renderer>().materials = originalMaterials;
     }
 
     public void EnterEditMode()
@@ -181,7 +203,7 @@ public class EditableObject : MonoBehaviour
         isEditing = true;
         if (rotationSlider != null)
         {
-            rotationSlider.value = 6;
+            rotationSlider.value = 6; // Set neutral value to 6
             rotationSlider.gameObject.SetActive(true);
         }
         if (editButton != null)
@@ -238,17 +260,20 @@ public class EditableObject : MonoBehaviour
         if (col != null)
         {
             Vector3 halfExtents = Vector3.zero;
-            Vector3 center = rootTransform.position;
+            // Get the world-space center using the child’s transform.
+            Vector3 center = Vector3.zero;
             if (col is BoxCollider box)
             {
                 halfExtents = Vector3.Scale(box.size, transform.lossyScale) * 0.5f;
-                center = rootTransform.position + box.center;
+                center = transform.TransformPoint(box.center);
             }
             else
             {
                 halfExtents = col.bounds.extents;
+                center = col.bounds.center;
             }
-            Collider[] colliders = Physics.OverlapBox(center, halfExtents, rootTransform.rotation);
+            // Use the child's rotation for the OverlapBox.
+            Collider[] colliders = Physics.OverlapBox(center, halfExtents, transform.rotation);
             foreach (Collider other in colliders)
             {
                 if (other.gameObject != gameObject && other.CompareTag("PlacedObject"))
@@ -258,21 +283,23 @@ public class EditableObject : MonoBehaviour
                 }
             }
         }
+        Renderer rend = GetComponent<Renderer>();
         if (isOutOfBounds || isColliding)
         {
-            if (invalidMaterial != null && GetComponent<Renderer>() != null)
-                GetComponent<Renderer>().material = invalidMaterial;
+            if (invalidMaterial != null && rend != null)
+                rend.materials = new Material[] { Instantiate(invalidMaterial), Instantiate(invalidMaterial) };
             if (confirmButton != null)
                 confirmButton.interactable = false;
         }
         else
         {
-            if (validMaterial != null && GetComponent<Renderer>() != null)
-                GetComponent<Renderer>().material = validMaterial;
+            if (validMaterial != null && rend != null)
+                rend.materials = new Material[] { Instantiate(validMaterial), Instantiate(validMaterial) };
             if (confirmButton != null)
                 confirmButton.interactable = true;
         }
     }
+
 
     public void PlayPlacementAnimation(float duration)
     {
@@ -281,11 +308,9 @@ public class EditableObject : MonoBehaviour
 
     private System.Collections.IEnumerator AnimatePlacement(float duration)
     {
-        // Store the current Y position and local scale as the target values.
         float targetY = transform.position.y;
         Vector3 targetScale = transform.localScale;
 
-        // Set starting values: Y = 0 and scale = 0.
         Vector3 startPos = new Vector3(transform.position.x, 0f, transform.position.z);
         transform.position = startPos;
         transform.localScale = Vector3.zero;
@@ -293,23 +318,17 @@ public class EditableObject : MonoBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
-            // t goes from 0 to 1 over the duration (using SmoothStep for a smooth curve).
-            float t = Mathf.SmoothStep(0.5f, 1f, elapsed / duration);
-
-
-            // Interpolate Y position and scale.
+            float t = Mathf.SmoothStep(0.7f, 1f, elapsed / duration);
             float newY = Mathf.Lerp(0f, targetY, t);
             transform.position = new Vector3(transform.position.x, newY, transform.position.z);
             transform.localScale = Vector3.Lerp(Vector3.zero, targetScale, t);
-
             elapsed += Time.deltaTime;
             yield return null;
         }
-
-        // Ensure final values are set.
         transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
         transform.localScale = targetScale;
     }
+
     void LateUpdate()
     {
         if (currentSelected == this && editUIPanel != null)

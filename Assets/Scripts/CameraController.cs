@@ -24,9 +24,11 @@ public class CameraController : MonoBehaviour
     private Vector3 targetPosition; // Target position for movement smoothing
     private float leeway = 1f; // Extra movement leeway for boundaries
     private bool canMove = false; // Determines if the camera can move
+    public Shader shader;
 
     void Start()
     {
+        Camera.main.SetReplacementShader(shader, "RenderType");
         targetPosition = transform.position;
     }
 
