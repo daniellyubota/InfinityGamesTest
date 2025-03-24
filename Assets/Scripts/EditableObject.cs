@@ -186,6 +186,14 @@ public class EditableObject : MonoBehaviour
             if (rotationSlider != null)
                 rotationSlider.gameObject.SetActive(false);
         }
+        // Force the object to switch to the "Outlined" layer.
+        gameObject.layer = LayerMask.NameToLayer("Outlined");
+        // Restore the original materials so that no valid material is forced.
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null && originalMaterials != null)
+        {
+            rend.materials = originalMaterials;
+        }
         isEditing = false;
     }
 
@@ -194,16 +202,21 @@ public class EditableObject : MonoBehaviour
         currentSelected = null;
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
+        // Restore original materials.
         if (GetComponent<Renderer>() != null && originalMaterials != null)
             GetComponent<Renderer>().materials = originalMaterials;
+        // Ensure layer is set back to Default (0).
+        gameObject.layer = LayerMask.NameToLayer("Default");
     }
 
     public void EnterEditMode()
     {
         isEditing = true;
+        // Change layer back to Default so that valid/invalid material is applied.
+        gameObject.layer = LayerMask.NameToLayer("Default");
         if (rotationSlider != null)
         {
-            rotationSlider.value = 6; // Set neutral value to 6
+            rotationSlider.value = 6; // Set neutral value to 6.
             rotationSlider.gameObject.SetActive(true);
         }
         if (editButton != null)
@@ -214,6 +227,8 @@ public class EditableObject : MonoBehaviour
             confirmButton.gameObject.SetActive(true);
         if (cancelButton != null)
             cancelButton.gameObject.SetActive(true);
+        // Now that we're in edit mode, CheckValidity() will assign valid/invalid materials.
+        CheckValidity();
     }
 
     public void DeleteSelf()
@@ -260,7 +275,6 @@ public class EditableObject : MonoBehaviour
         if (col != null)
         {
             Vector3 halfExtents = Vector3.zero;
-            // Get the world-space center using the child’s transform.
             Vector3 center = Vector3.zero;
             if (col is BoxCollider box)
             {
@@ -272,7 +286,6 @@ public class EditableObject : MonoBehaviour
                 halfExtents = col.bounds.extents;
                 center = col.bounds.center;
             }
-            // Use the child's rotation for the OverlapBox.
             Collider[] colliders = Physics.OverlapBox(center, halfExtents, transform.rotation);
             foreach (Collider other in colliders)
             {
@@ -284,22 +297,31 @@ public class EditableObject : MonoBehaviour
             }
         }
         Renderer rend = GetComponent<Renderer>();
-        if (isOutOfBounds || isColliding)
+        // Only update materials if in edit mode.
+        if (isEditing)
         {
-            if (invalidMaterial != null && rend != null)
-                rend.materials = new Material[] { Instantiate(invalidMaterial), Instantiate(invalidMaterial) };
-            if (confirmButton != null)
-                confirmButton.interactable = false;
+            if (isOutOfBounds || isColliding)
+            {
+                if (invalidMaterial != null && rend != null)
+                    rend.materials = new Material[] { Instantiate(invalidMaterial), Instantiate(invalidMaterial) };
+                if (confirmButton != null)
+                    confirmButton.interactable = false;
+            }
+            else
+            {
+                if (validMaterial != null && rend != null)
+                    rend.materials = new Material[] { Instantiate(validMaterial), Instantiate(validMaterial) };
+                if (confirmButton != null)
+                    confirmButton.interactable = true;
+            }
         }
         else
         {
-            if (validMaterial != null && rend != null)
-                rend.materials = new Material[] { Instantiate(validMaterial), Instantiate(validMaterial) };
+            // When not editing, do not change materials (outline will be applied via the Outlined layer).
             if (confirmButton != null)
-                confirmButton.interactable = true;
+                confirmButton.interactable = !(isOutOfBounds || isColliding);
         }
     }
-
 
     public void PlayPlacementAnimation(float duration)
     {
@@ -334,6 +356,7 @@ public class EditableObject : MonoBehaviour
         if (currentSelected == this && editUIPanel != null)
         {
             Vector3 screenPos = mainCamera.WorldToScreenPoint(rootTransform.position);
+            screenPos.y += 50; // This offset makes the UI appear above the object.
             editUIPanel.GetComponent<RectTransform>().position = screenPos;
         }
     }
