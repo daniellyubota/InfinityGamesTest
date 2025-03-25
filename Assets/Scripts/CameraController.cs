@@ -3,32 +3,30 @@ using UnityEngine.EventSystems;
 
 public class CameraController : MonoBehaviour
 {
-    public Transform cameraTransform; // Reference to the camera transform for zooming
+    public Transform cameraTransform; // Camera transform reference for zooming.
 
-    // Camera movement attributes
+    // Camera movement parameters.
     public float moveSpeed = 5f;
     public float rotateSpeed = 5f;
     public float zoomSpeed = 2f;
 
-    // Positions to use for the Camera Zoom
+    // Zoom position settings.
     public Vector3 originalPosition = new Vector3(0, 35, -44.5f);
     public Vector3 maxZoomIn = new Vector3(0, 20, -26.6f);
     public Vector3 maxZoomOut = new Vector3(0, 50, -62.4f);
 
-    // Camera movement boundaries
+    // Movement boundaries.
     public Vector3 movementBoundsMin = new Vector3(-7.5f, 0f, -7.5f);
     public Vector3 movementBoundsMax = new Vector3(7.5f, 0f, 7.5f);
 
-    private float zoomAmount = 0f; // Stores current zoom level
-    private Vector3 lastMousePosition; // Stores last mouse position for movement calculations
-    private Vector3 targetPosition; // Target position for movement smoothing
-    private float leeway = 1f; // Extra movement leeway for boundaries
-    private bool canMove = false; // Determines if the camera can move
-    public Shader shader;
+    private float zoomAmount = 0f; // Current zoom level.
+    private Vector3 lastMousePosition; // Last recorded mouse position.
+    private Vector3 targetPosition; // Target position for smooth movement.
+    private float leeway = 1f;
+    private bool canMove = false;
 
     void Start()
     {
-        Camera.main.SetReplacementShader(shader, "RenderType");
         targetPosition = transform.position;
     }
 
@@ -39,9 +37,9 @@ public class CameraController : MonoBehaviour
         CameraZoom();
     }
 
+    // Moves the camera based on mouse drag.
     void CameraMove()
     {
-        // Prevent camera movement when an EditableObject is being dragged.
         if (EditableObject.IsDraggingObject)
         {
             canMove = false;
@@ -82,8 +80,7 @@ public class CameraController : MonoBehaviour
         lastMousePosition = Input.mousePosition;
     }
 
-
-    // Rotates the camera when right-click is held
+    // Rotates the camera when right mouse is held.
     void CameraRotate()
     {
         if (Input.GetMouseButton(1))
@@ -93,7 +90,7 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    // Adjusts the camera zoom based on mouse scroll
+    // Zooms the camera based on the mouse scroll wheel.
     void CameraZoom()
     {
         float scroll = Input.GetAxis("Mouse ScrollWheel");

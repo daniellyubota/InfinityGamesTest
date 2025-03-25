@@ -5,10 +5,12 @@ using UnityEngine.Events;
 
 public class EditableObject : MonoBehaviour
 {
+    // Static references to track the current selected object and UI input.
     public static EditableObject currentSelected;
     public static bool IsPressingUI = false;
     public static bool IsDraggingObject = false;
 
+    // UI elements for object editing.
     public GameObject editUIPanel;
     public Button editButton;
     public Button deleteButton;
@@ -17,41 +19,43 @@ public class EditableObject : MonoBehaviour
     public Slider rotationSlider;
     public float spawnAnimDuration;
 
+    // Materials used for editing state.
     public Material validMaterial;
     public Material invalidMaterial;
-    // Array to pick the random material from.
+    // Array to choose a random material from.
     public Material[] randomMaterials;
-    // Store the original materials (first will be random, second remains white)
+    // Stores the original material array assigned on spawn.
     private Material[] originalMaterials;
+    // Saved material instance for later restoration.
+    private Material[] originalMatInstance = null;
 
     private bool isDragging = false;
     private Vector3 dragOffset;
     private Camera mainCamera;
 
-    // Saved parent's position on selection
+    // Saved transform values for resetting position/rotation.
     private Vector3 initialPosition;
-    // Saved child's rotation on selection
     private Quaternion initialRotation;
 
+    // Boundaries for placement.
     public float minX = -13f;
     public float maxX = 13f;
     public float minZ = -13f;
     public float maxZ = 13f;
 
-    private bool isEditing = false; // True when in active edit mode
-    private Transform rootTransform; // Parent that moves during drag
+    private bool isEditing = false; // True when object is in edit mode.
+    private Transform rootTransform; // Reference to the parent transform used for movement.
 
     void Start()
     {
         mainCamera = Camera.main;
         rootTransform = (transform.parent != null) ? transform.parent : transform;
 
-        // Get the current materials from the renderer.
+        // Cache and set up the original materials.
         Renderer rend = GetComponent<Renderer>();
         if (rend != null)
         {
-            originalMaterials = rend.materials; // assumes two materials already assigned
-            // Pick a random material for the first slot if available.
+            originalMaterials = rend.materials; // Assumes two materials assigned.
             if (randomMaterials != null && randomMaterials.Length > 0)
             {
                 int randIndex = Random.Range(0, randomMaterials.Length);
@@ -60,12 +64,21 @@ public class EditableObject : MonoBehaviour
                 rend.materials = newMats;
                 originalMaterials = (Material[])newMats.Clone();
             }
+            // Randomize the _NoiseSize property on each material.
+            for (int i = 0; i < originalMaterials.Length; i++)
+            {
+                if (originalMaterials[i].HasProperty("_NoiseSize"))
+                {
+                    float randomNoiseSize = Random.Range(10f, 60f);
+                    originalMaterials[i].SetFloat("_NoiseSize", randomNoiseSize);
+                }
+            }
         }
 
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
 
-        // Hook pointer events on each button to set the IsPressingUI flag.
+        // Add UI blocking to buttons.
         AddUIBlocker(editButton);
         AddUIBlocker(deleteButton);
         AddUIBlocker(confirmButton);
@@ -74,27 +87,32 @@ public class EditableObject : MonoBehaviour
         PlayPlacementAnimation(spawnAnimDuration);
     }
 
-    // Adds EventTrigger entries to a button to update the UI press flag.
+    // Adds pointer events to a button to set/reset the UI flag.
     private void AddUIBlocker(Button btn)
     {
         if (btn == null)
             return;
+
         EventTrigger trigger = btn.gameObject.AddComponent<EventTrigger>();
 
-        EventTrigger.Entry pointerDown = new EventTrigger.Entry();
-        pointerDown.eventID = EventTriggerType.PointerDown;
+        EventTrigger.Entry pointerDown = new EventTrigger.Entry
+        {
+            eventID = EventTriggerType.PointerDown
+        };
         pointerDown.callback.AddListener((BaseEventData data) => { IsPressingUI = true; });
         trigger.triggers.Add(pointerDown);
 
-        EventTrigger.Entry pointerUp = new EventTrigger.Entry();
-        pointerUp.eventID = EventTriggerType.PointerUp;
+        EventTrigger.Entry pointerUp = new EventTrigger.Entry
+        {
+            eventID = EventTriggerType.PointerUp
+        };
         pointerUp.callback.AddListener((BaseEventData data) => { IsPressingUI = false; });
         trigger.triggers.Add(pointerUp);
     }
 
     void Update()
     {
-        // In selection mode (not editing), if a click occurs away from this object, deselect it.
+        // Deselect if click occurs outside this object while not editing.
         if (currentSelected == this && !isEditing && Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
@@ -125,7 +143,8 @@ public class EditableObject : MonoBehaviour
     {
         if (IsPressingUI)
             return;
-        // Only drag if in edit mode.
+
+        // Only allow dragging if in edit mode.
         if (currentSelected == this && isEditing && Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
@@ -143,7 +162,7 @@ public class EditableObject : MonoBehaviour
         if (isDragging && currentSelected == this && isEditing)
         {
             Vector3 screenPos = new Vector3(Input.mousePosition.x, Input.mousePosition.y,
-                mainCamera.WorldToScreenPoint(rootTransform.position).z);
+                                            mainCamera.WorldToScreenPoint(rootTransform.position).z);
             Vector3 newPos = mainCamera.ScreenToWorldPoint(screenPos) + dragOffset;
             newPos.y = rootTransform.position.y;
             rootTransform.position = newPos;
@@ -157,9 +176,10 @@ public class EditableObject : MonoBehaviour
         IsDraggingObject = false;
     }
 
+    // Selects this object and saves its material instance for later restoration.
     public void Select()
     {
-        // Prevent selecting a new object if another is in active edit mode.
+        // Avoid selecting if another object is in edit mode.
         if (currentSelected != null && currentSelected.isEditing && currentSelected != this)
             return;
         if (currentSelected == this)
@@ -175,59 +195,51 @@ public class EditableObject : MonoBehaviour
         if (editUIPanel != null)
         {
             editUIPanel.SetActive(true);
-            if (editButton != null)
-                editButton.gameObject.SetActive(true);
-            if (deleteButton != null)
-                deleteButton.gameObject.SetActive(true);
-            if (confirmButton != null)
-                confirmButton.gameObject.SetActive(false);
-            if (cancelButton != null)
-                cancelButton.gameObject.SetActive(false);
-            if (rotationSlider != null)
-                rotationSlider.gameObject.SetActive(false);
+            if (editButton != null) editButton.gameObject.SetActive(true);
+            if (deleteButton != null) deleteButton.gameObject.SetActive(true);
+            if (confirmButton != null) confirmButton.gameObject.SetActive(false);
+            if (cancelButton != null) cancelButton.gameObject.SetActive(false);
+            if (rotationSlider != null) rotationSlider.gameObject.SetActive(false);
         }
-        // Force the object to switch to the "Outlined" layer.
-        gameObject.layer = LayerMask.NameToLayer("Outlined");
-        // Restore the original materials so that no valid material is forced.
+        // Save the current material instance only once.
         Renderer rend = GetComponent<Renderer>();
-        if (rend != null && originalMaterials != null)
+        if (rend != null && originalMatInstance == null)
         {
-            rend.materials = originalMaterials;
+            originalMatInstance = rend.materials;
         }
+        // Set the object's layer to "Outlined" for the outline effect.
+        gameObject.layer = LayerMask.NameToLayer("Outlined");
         isEditing = false;
     }
 
+    // Deselects this object, restores the saved material instance and resets the layer.
     public void Deselect()
     {
         currentSelected = null;
         if (editUIPanel != null)
             editUIPanel.SetActive(false);
-        // Restore original materials.
-        if (GetComponent<Renderer>() != null && originalMaterials != null)
-            GetComponent<Renderer>().materials = originalMaterials;
-        // Ensure layer is set back to Default (0).
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null && originalMatInstance != null)
+        {
+            rend.materials = originalMatInstance;
+        }
         gameObject.layer = LayerMask.NameToLayer("Default");
     }
 
+    // Enters edit mode, changing the layer back and applying valid/invalid material logic.
     public void EnterEditMode()
     {
         isEditing = true;
-        // Change layer back to Default so that valid/invalid material is applied.
         gameObject.layer = LayerMask.NameToLayer("Default");
         if (rotationSlider != null)
         {
-            rotationSlider.value = 6; // Set neutral value to 6.
+            rotationSlider.value = 6; // Neutral slider value.
             rotationSlider.gameObject.SetActive(true);
         }
-        if (editButton != null)
-            editButton.gameObject.SetActive(false);
-        if (deleteButton != null)
-            deleteButton.gameObject.SetActive(false);
-        if (confirmButton != null)
-            confirmButton.gameObject.SetActive(true);
-        if (cancelButton != null)
-            cancelButton.gameObject.SetActive(true);
-        // Now that we're in edit mode, CheckValidity() will assign valid/invalid materials.
+        if (editButton != null) editButton.gameObject.SetActive(false);
+        if (deleteButton != null) deleteButton.gameObject.SetActive(false);
+        if (confirmButton != null) confirmButton.gameObject.SetActive(true);
+        if (cancelButton != null) cancelButton.gameObject.SetActive(true);
         CheckValidity();
     }
 
@@ -254,11 +266,9 @@ public class EditableObject : MonoBehaviour
         CancelEdit();
     }
 
-    // When the slider changes, rotate the child (this object) by fixed steps.
-    // Slider range: 0 to 12 with 6 as neutral; each unit equals 30°.
+    // Rotates the object based on slider input. Each unit equals 30° rotation.
     public void OnRotationSliderChanged(float value)
     {
-        Debug.Log("Slider value: " + value);
         float rotationOffset = -(value - 6) * 30f;
         transform.rotation = Quaternion.Euler(initialRotation.eulerAngles.x,
                                               initialRotation.eulerAngles.y + rotationOffset,
@@ -266,6 +276,7 @@ public class EditableObject : MonoBehaviour
         CheckValidity();
     }
 
+    // Checks if the object is out of bounds or colliding with other placed objects.
     public void CheckValidity()
     {
         bool isOutOfBounds = rootTransform.position.x < minX || rootTransform.position.x > maxX ||
@@ -297,29 +308,35 @@ public class EditableObject : MonoBehaviour
             }
         }
         Renderer rend = GetComponent<Renderer>();
-        // Only update materials if in edit mode.
-        if (isEditing)
+        if (isOutOfBounds || isColliding)
         {
-            if (isOutOfBounds || isColliding)
+            if (invalidMaterial != null && rend != null)
             {
-                if (invalidMaterial != null && rend != null)
-                    rend.materials = new Material[] { Instantiate(invalidMaterial), Instantiate(invalidMaterial) };
-                if (confirmButton != null)
-                    confirmButton.interactable = false;
+                Material mat1 = Instantiate(invalidMaterial);
+                Material mat2 = Instantiate(invalidMaterial);
+                rend.materials = new Material[] { mat1, mat2 };
             }
-            else
-            {
-                if (validMaterial != null && rend != null)
-                    rend.materials = new Material[] { Instantiate(validMaterial), Instantiate(validMaterial) };
-                if (confirmButton != null)
-                    confirmButton.interactable = true;
-            }
+            if (confirmButton != null)
+                confirmButton.interactable = false;
         }
         else
         {
-            // When not editing, do not change materials (outline will be applied via the Outlined layer).
-            if (confirmButton != null)
-                confirmButton.interactable = !(isOutOfBounds || isColliding);
+            if (isEditing)
+            {
+                if (validMaterial != null && rend != null)
+                {
+                    Material mat1 = Instantiate(validMaterial);
+                    Material mat2 = Instantiate(validMaterial);
+                    rend.materials = new Material[] { mat1, mat2 };
+                }
+                if (confirmButton != null)
+                    confirmButton.interactable = true;
+            }
+            else
+            {
+                if (confirmButton != null)
+                    confirmButton.interactable = true;
+            }
         }
     }
 
@@ -328,15 +345,14 @@ public class EditableObject : MonoBehaviour
         StartCoroutine(AnimatePlacement(duration));
     }
 
+    // Plays an animation that scales the object up from zero.
     private System.Collections.IEnumerator AnimatePlacement(float duration)
     {
         float targetY = transform.position.y;
         Vector3 targetScale = transform.localScale;
-
         Vector3 startPos = new Vector3(transform.position.x, 0f, transform.position.z);
         transform.position = startPos;
         transform.localScale = Vector3.zero;
-
         float elapsed = 0f;
         while (elapsed < duration)
         {
@@ -356,7 +372,7 @@ public class EditableObject : MonoBehaviour
         if (currentSelected == this && editUIPanel != null)
         {
             Vector3 screenPos = mainCamera.WorldToScreenPoint(rootTransform.position);
-            screenPos.y += 50; // This offset makes the UI appear above the object.
+            screenPos.y += 50; // Offset to position the UI above the object.
             editUIPanel.GetComponent<RectTransform>().position = screenPos;
         }
     }

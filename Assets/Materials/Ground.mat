@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-809779594943701129
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 9
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -7,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Pastel3
+  m_Name: Ground
   m_Shader: {fileID: -6465566751694194690, guid: c1ec7955cb4ca664a9ea5c0107d70b31, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -25,7 +38,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 20d7ac89622010b42ad06cc2780abb5b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseNormalTexture:
@@ -33,7 +46,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseTexture:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 20d7ac89622010b42ad06cc2780abb5b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SmoothnessTexture:
@@ -55,50 +68,37 @@ Material:
     m_Ints: []
     m_Floats:
     - Step1: 1
-    - _Gloss: 10
-    - _NoiseSize: 41.956142
+    - _Gloss: 5.37
+    - _NoiseSize: 68
     - _NormalStrength: 1
-    - _OutlineWidth: 0.193
+    - _OutlineWidth: 0.057
     - _QueueControl: 0
     - _QueueOffset: 0
     - _RimPower: 2.2
-    - _RimStep: 0.608
-    - _RimStepSmooth: 1
-    - _ShadowStep: 0.6
-    - _ShadowStepSmooth: 0.04
+    - _RimStep: 0.734
+    - _RimStepSmooth: 0.148
+    - _ShadowStep: 0.759
+    - _ShadowStepSmooth: 0
     - _SnowAmount: 0.3
-    - _SnowBlend: 0.147
-    - _SnowColorNoiseSize: 252.17
-    - _SnowColorNoiseStrength: 0.198
-    - _SpecularStep: 0.15
-    - _SpecularStepSmooth: 0.05
+    - _SnowBlend: 0.402
+    - _SnowColorNoiseSize: 250
+    - _SnowColorNoiseStrength: 0.46
+    - _SpecularStep: 0
+    - _SpecularStepSmooth: 0
     - _Step: 0.432
     - _Step1: 0.537
     - _Step2: 0.018
     - _Step3: 0.97
     - _Step4: 0.025
     m_Colors:
-    - _BaseColor: {r: 0.6156863, g: 0.8039216, b: 0.9529412, a: 1}
-    - _HighColor: {r: 1, g: 1, b: 1, a: 1}
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
+    - _HighColor: {r: 0, g: 0, b: 0, a: 1}
     - _Offset: {r: 0, g: 0, b: 0, a: 0}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
-    - _RimColor: {r: 1, g: 0.8366857, b: 0.7971698, a: 1}
+    - _RimColor: {r: 0, g: 0, b: 0, a: 1}
     - _SnowColor: {r: 1.498039, g: 1.498039, b: 1.498039, a: 1}
     - _SnowDirection: {r: 0, g: 1, b: 0, a: 0}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _Tiling: {r: 1, g: 1, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &1137005653158357782
-MonoBehaviour:
-  m_ObjectHideFlags: 11
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  version: 9
